@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: ump-db
+    environment:
+      POSTGRES_USER: ump_user
+      POSTGRES_PASSWORD: ump_password
+      POSTGRES_DB: user_management_portal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ump_user -d user_management_portal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ump-network
+
+  # Redis Cache (Optional - for sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: ump-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ump-network
+
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: ump-api
+    environment:
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://ump_user:ump_password@db:5432/user_management_portal
+      - SECRET_KEY=development-secret-key-change-in-production-min-32-chars
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./backend:/app/backend
+    networks:
+      - ump-network
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend Development Server
+  frontend:
+    image: node:20-alpine
+    container_name: ump-frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    command: sh -c "npm install && npm run dev -- --host"
+    networks:
+      - ump-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ump-network:
+    driver: bridge
