@@ -1,100 +1,84 @@
-"""
-Pydantic schemas for request/response validation.
+"""Pydantic schemas for request/response validation.
 
 This module exports all schema classes for use throughout the application.
+Updated per LLD specifications.
 """
-
-from app.schemas.base import (
-    BaseSchema,
-    BaseResponse,
-    PaginationParams,
-    PaginatedResponse,
-    SortOrder,
-)
 
 from app.schemas.user import (
     UserBase,
     UserCreate,
     UserUpdate,
     UserResponse,
-    UserProfile,
     UserListResponse,
-    UserStatus,
-    UserFilters,
+    UserFilter,
 )
-
 from app.schemas.auth import (
-    LoginRequest,
-    LoginResponse,
-    RegisterRequest,
     TokenPayload,
-    TokenPair,
-    RefreshTokenRequest,
-    PasswordChangeRequest,
+    TokenResponse,
+    TokenRefresh,
+    UserLogin,
+    UserRegister,
+    PasswordChange,
     PasswordResetRequest,
-    PasswordResetConfirm,
+    PasswordReset,
+    AuthUserResponse,
+    LoginResponse,
 )
-
-from app.schemas.rbac import (
+from app.schemas.profile import (
+    UserProfileBase,
+    UserProfileUpdate,
+    UserProfileResponse,
+)
+from app.schemas.role import (
     RoleBase,
     RoleCreate,
     RoleUpdate,
     RoleResponse,
-    RoleWithPermissions,
     PermissionBase,
     PermissionResponse,
-    UserRoleAssign,
-    RolePermissionAssign,
+    RolePermissionAssignment,
 )
-
-from app.schemas.audit import (
-    AuditLogBase,
-    AuditLogResponse,
-    AuditLogFilter,
-    AuditEventType,
-    AuditSeverity,
+from app.schemas.common import (
+    ApiResponse,
+    ApiError,
+    PaginatedResponse,
+    PaginationParams,
 )
 
 __all__ = [
-    # Base
-    "BaseSchema",
-    "BaseResponse",
-    "PaginationParams",
-    "PaginatedResponse",
-    "SortOrder",
-    # User
+    # User schemas
     "UserBase",
     "UserCreate",
     "UserUpdate",
     "UserResponse",
-    "UserProfile",
     "UserListResponse",
-    "UserStatus",
-    "UserFilters",
-    # Auth
-    "LoginRequest",
-    "LoginResponse",
-    "RegisterRequest",
+    "UserFilter",
+    # Auth schemas
     "TokenPayload",
-    "TokenPair",
-    "RefreshTokenRequest",
-    "PasswordChangeRequest",
+    "TokenResponse",
+    "TokenRefresh",
+    "UserLogin",
+    "UserRegister",
+    "PasswordChange",
     "PasswordResetRequest",
-    "PasswordResetConfirm",
-    # RBAC
+    "PasswordReset",
+    "AuthUserResponse",
+    "LoginResponse",
+    # Profile schemas
+    "UserProfileBase",
+    "UserProfileUpdate",
+    "UserProfileResponse",
+    # Role schemas
     "RoleBase",
     "RoleCreate",
     "RoleUpdate",
     "RoleResponse",
-    "RoleWithPermissions",
     "PermissionBase",
     "PermissionResponse",
-    "UserRoleAssign",
-    "RolePermissionAssign",
-    # Audit
-    "AuditLogBase",
-    "AuditLogResponse",
-    "AuditLogFilter",
-    "AuditEventType",
-    "AuditSeverity",
+    "RolePermissionAssignment",
+    # Common schemas
+    "ApiResponse",
+    "ApiError",
+    "PaginatedResponse",
+    "PaginationParams",
 ]
