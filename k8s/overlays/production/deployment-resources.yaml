@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          env:
+            - name: DATABASE_POOL_SIZE
+              value: "50"
+            - name: DATABASE_MAX_OVERFLOW
+              value: "20"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-websocket
+spec:
+  template:
+    spec:
+      containers:
+        - name: websocket
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-worker
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
