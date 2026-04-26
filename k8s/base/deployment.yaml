@@ -1,0 +1,228 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-api
+  namespace: taskflow
+  labels:
+    app.kubernetes.io/name: taskflow-api
+    app.kubernetes.io/component: api
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: taskflow-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: taskflow-api
+        app.kubernetes.io/component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: taskflow-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: api
+          image: taskflow.azurecr.io/taskflow-api:v1.0.0
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: websocket
+              containerPort: 8001
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-db-credentials
+                  key: url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-redis-credentials
+                  key: url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-app-secrets
+                  key: secret-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-app-secrets
+                  key: jwt-secret
+          envFrom:
+            - configMapRef:
+                name: taskflow-api-config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: uploads
+              mountPath: /app/uploads
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: uploads
+          emptyDir:
+            sizeLimit: 1Gi
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - taskflow-api
+                topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: taskflow-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-websocket
+  namespace: taskflow
+  labels:
+    app.kubernetes.io/name: taskflow-websocket
+    app.kubernetes.io/component: websocket
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: taskflow-websocket
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: taskflow-websocket
+        app.kubernetes.io/component: websocket
+    spec:
+      serviceAccountName: taskflow-api
+      containers:
+        - name: websocket
+          image: taskflow.azurecr.io/taskflow-websocket:v1.0.0
+          ports:
+            - name: websocket
+              containerPort: 8002
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-redis-credentials
+                  key: url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-app-secrets
+                  key: jwt-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            tcpSocket:
+              port: websocket
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-worker
+  namespace: taskflow
+  labels:
+    app.kubernetes.io/name: taskflow-worker
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: taskflow-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: taskflow-worker
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: taskflow-api
+      containers:
+        - name: worker
+          image: taskflow.azurecr.io/taskflow-worker:v1.0.0
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-db-credentials
+                  key: url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-redis-credentials
+                  key: url
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
