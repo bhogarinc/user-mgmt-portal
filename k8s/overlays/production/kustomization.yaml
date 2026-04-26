@@ -1,0 +1,64 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: taskflow-production
+
+resources:
+  - ../../base
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+  tier: production
+
+images:
+  - name: taskflow.azurecr.io/taskflow-api
+    newTag: v1.0.0-stable
+  - name: taskflow.azurecr.io/taskflow-websocket
+    newTag: v1.0.0-stable
+  - name: taskflow.azurecr.io/taskflow-worker
+    newTag: v1.0.0-stable
+
+replicas:
+  - name: taskflow-api
+    count: 5
+  - name: taskflow-websocket
+    count: 3
+  - name: taskflow-worker
+    count: 4
+
+configMapGenerator:
+  - name: taskflow-api-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - LOG_LEVEL=WARN
+      - RATE_LIMIT_DEFAULT=200/minute
+
+patchesStrategicMerge:
+  - deployment-resources.yaml
+  - hpa-config.yaml
+
+patches:
+  - target:
+      kind: Ingress
+      name: taskflow-api
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.taskflow.io
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.taskflow.io
+  - target:
+      kind: Ingress
+      name: taskflow-websocket
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: ws.taskflow.io
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: ws.taskflow.io
